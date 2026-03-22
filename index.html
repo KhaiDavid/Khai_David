@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Lý Linh Kiện 90</title>
+    <title>Hệ Thống Kho Linh Kiện Toàn Diện</title>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
     <style>
         :root {
@@ -13,274 +13,207 @@
             --card-bg: #334155;
             --text-main: #f8fafc;
             --text-dim: #94a3b8;
+            --error-color: #ff4757;
         }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; display: flex; flex-direction: column; min-height: 100vh; }
+        h1 { text-align: center; color: var(--primary-color); text-transform: uppercase; margin-bottom: 20px; font-size: 1.5rem; }
+        
+        .search-box { max-width: 600px; margin: 0 auto 30px; position: relative; display: flex; gap: 10px; width: 100%; }
+        #searchInput { flex: 1; padding: 12px 20px; border-radius: 30px; border: 1px solid var(--card-bg); background: var(--panel-bg); color: white; outline: none; font-size: 16px; }
+        
+        .suggestion-list { position: absolute; top: 100%; left: 0; width: calc(100% - 110px); background: var(--panel-bg); border-radius: 10px; margin-top: 5px; max-height: 250px; overflow-y: auto; z-index: 1000; display: none; border: 1px solid var(--card-bg); }
+        .suggestion-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid var(--card-bg); font-size: 13px; }
+        .suggestion-item:hover { background: var(--card-bg); color: var(--primary-color); }
+        
+        .search-btn { padding: 10px 25px; border-radius: 30px; border: none; background: var(--primary-color); font-weight: bold; cursor: pointer; }
 
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+        /* MODAL THÔNG BÁO LỖI */
+        #errorModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none;
+            align-items: center; justify-content: center; z-index: 9999;
         }
-
-        h1 { text-align: center; color: var(--primary-color); text-transform: uppercase; letter-spacing: 2px; }
-
-        /* THANH TÌM KIẾM */
-        .search-container {
-            max-width: 600px;
-            margin: 0 auto 30px;
-            display: flex;
-            gap: 10px;
+        .modal-content {
+            background: var(--panel-bg); padding: 30px; border-radius: 20px;
+            text-align: center; border: 2px solid var(--error-color); max-width: 320px;
+            box-shadow: 0 0 30px rgba(255, 71, 87, 0.3);
         }
+        .modal-content p { font-weight: bold; margin-bottom: 20px; color: #fff; }
+        .ok-btn { background: var(--error-color); color: white; border: none; padding: 12px 40px; border-radius: 25px; cursor: pointer; font-weight: bold; }
 
-        #searchInput {
-            flex: 1;
-            padding: 12px 20px;
-            border-radius: 30px;
-            border: 1px solid var(--card-bg);
-            background: var(--panel-bg);
-            color: white;
-            font-size: 16px;
-            outline: none;
-            transition: 0.3s;
-        }
+        .main-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 150px; }
+        .panel { background: var(--panel-bg); padding: 12px; border-radius: 15px; border: 1px solid #334155; }
+        .panel h2 { text-align: center; font-size: 0.9rem; color: var(--primary-color); margin: 0 0 10px 0; border-bottom: 1px solid #334155; padding-bottom: 5px; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(6, 90px); gap: 8px; }
+        .cell { background: var(--card-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; padding: 4px; text-align: center; }
+        .cell .comp-name { font-size: 8px; line-height: 1.3; white-space: pre-line; color: var(--text-dim); height: 35px; display: flex; align-items: center; }
+        .cell .grid-pos { font-size: 20px; font-weight: 800; color: #fff; }
 
-        #searchInput:focus { border-color: var(--primary-color); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
-
-        .search-btn {
-            padding: 10px 25px;
-            border-radius: 30px;
-            border: none;
-            background: var(--primary-color);
-            color: #000;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .search-btn:hover { transform: scale(1.05); background: #00cc6e; }
-
-        /* BỐ CỤC 3 PANEL LINH KIỆN */
-        .main-layout {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .panel {
-            background: var(--panel-bg);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid #334155;
-        }
-
-        .panel h2 { 
-            text-align: center; 
-            font-size: 1.1rem; 
-            color: var(--text-dim);
-            margin-top: 0;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 10px;
-        }
-
-        /* GRID 3 HÀNG X 10 CỘT */
-        .grid-container {
-    display: grid;
-        /* Mỗi cột chỉ rộng đúng 60px thay vì tự co giãn */
-        grid-template-columns: repeat(3, 100px); 
-        /* Mỗi hàng cao đúng 60px */
-        grid-template-rows: repeat(10, 100px); 
-        gap: 8px;
-        margin-top: 15px;
-        /* Căn giữa các ô vào giữa Panel */
-        justify-content: center;
-        }
-
-    .cell {
-        width: 100%;       /* Chiếm hết 60px đã thiết lập ở trên */
-        height: 100%;      /* Chiếm hết 60px đã thiết lập ở trên */
-        background: var(--card-bg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        cursor: pointer;
-        /* Giảm chữ xuống 10px hoặc 9px để trông tinh tế hơn */
-        font-size: 20px;   
-        font-weight: 700;
-        transition: all 0.3s ease;
-        color: var(--text-dim);
-        text-align: center;
-        word-break: break-all; /* Nếu tên dài quá nó sẽ tự xuống dòng */
-        padding: 2px;
-    }
-
-        .cell:hover { transform: translateY(-3px); border-color: var(--primary-color); color: #fff; }
-
-        /* HIỆU ỨNG TÌM KIẾM */
         .dim-mode .cell { opacity: 0.2; filter: blur(1px); }
-        .dim-mode .cell.active { 
-            opacity: 1; 
-            filter: none; 
-            background: var(--primary-color); 
-            color: #000; 
-            box-shadow: 0 0 20px var(--primary-color);
-            transform: scale(1.15);
-            z-index: 10;
-        }
+        .dim-mode .cell.active { opacity: 1; filter: none; background: var(--primary-color); box-shadow: 0 0 25px var(--primary-color); transform: scale(1.08); border-color: white; z-index: 10; }
+        .dim-mode .cell.active * { color: #000 !important; }
 
-        /* 3 PANEL THÔNG TIN PHÍA DƯỚI */
-        .info-footer {
-            display: grid;
-            grid-template-columns: 1fr 2fr 1.5fr;
-            gap: 15px;
-            margin-top: auto; /* Đẩy xuống cuối */
-            padding: 20px;
-            background: #0b1120;
-            border-radius: 15px;
-            border: 1px solid #1e293b;
-        }
-
-        .info-box {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid var(--card-bg);
-            transition: 0.3s;
-        }
-
-        .info-box.highlight-box { border-left-color: var(--primary-color); }
-
-        .info-box h4 { margin: 0 0 8px 0; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
-        .info-box p { margin: 0; font-size: 1.05rem; line-height: 1.4; }
-
-        .found-text { color: var(--primary-color); font-weight: bold; }
-
+        .info-footer { position: fixed; bottom: 0; left: 0; width: 100%; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding: 15px; background: #0b1120; border-top: 2px solid var(--primary-color); box-sizing: border-box; z-index: 2000; }
+        .info-box { background: #1e293b; padding: 10px; border-radius: 10px; }
+        .info-box h4 { margin: 0 0 5px 0; font-size: 0.7rem; color: var(--primary-color); text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <h1>Kho Linh Kiện Điện Tử</h1>
+    <h1>Hệ Thống Tọa Độ Linh Kiện</h1>
 
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Nhập tên linh kiện cần tìm..." onkeyup="if(event.key==='Enter') performSearch()">
-        <button class="search-btn" onclick="performSearch()">TÌM KIẾM</button>
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Tìm IRF3205, Công tắc, STM32..." autocomplete="off">
+        <div id="suggestionList" class="suggestion-list"></div>
+        <button class="search-btn" onclick="performSearch()">TÌM</button>
     </div>
 
-    <div class="main-layout" id="mainLayout">
+    <div id="errorModal">
+        <div class="modal-content">
+            <p>Linh kiện không có hoặc chưa thêm vào trong danh sách</p>
+            <button class="ok-btn" onclick="closeModal()">OK</button>
         </div>
+    </div>
+
+    <div class="main-layout" id="mainLayout"></div>
 
     <div class="info-footer">
-        <div class="info-box" id="boxPos">
-            <h4>Vị trí linh kiện</h4>
-            <p id="txtPos">---</p>
-        </div>
-        <div class="info-box" id="boxFunc">
-            <h4>Chức năng chi tiết</h4>
-            <p id="txtFunc">Chọn một linh kiện để xem thông tin.</p>
-        </div>
-        <div class="info-box" id="boxStatus">
-            <h4>Trạng thái thông báo</h4>
-            <p id="txtStatus">Hệ thống sẵn sàng.</p>
-        </div>
+        <div class="info-box"><h4>Vị trí</h4><p id="txtPos">---</p></div>
+        <div class="info-box"><h4>Linh kiện</h4><p id="txtFunc">Chọn ô hoặc gõ tìm kiếm.</p></div>
     </div>
 
     <script>
-        // 1. Dữ liệu 90 linh kiện (Bạn có thể thay đổi tên/mô tả ở đây)
-        const components = [];
-        const types = ["Resistor", "Capacitor", "IC", "Transistor", "LED", "Diode", "Sensor", "Relay", "Switch", "Inductor"];
+        const rawData = {
+            p1: {
+                colC: [["IRF3205", "FT232"], ["78M05", "AMS"], ["ULN28035", "ADM3251EA30"], ["B2405S-2W13", "HR911105A12"], ["W5500", "AMS11175V"], ["3MAJ5.0A", "HCL0631"]],
+                colB: [["Thạch anh 8", "Thạch anh 12"], ["HCPL2630", "A2630"], ["AM26LS23ACDR38", "LM35860"], ["LM317K", "LM317"], ["TLP 291 SOP4", "TLP291 SOP16"], ["74HC14", "LOC110P"]],
+                colA: [["DIODE ZENER 1N4733A 51V", "BZT52C5V1 51V"], ["25MHZ 3258", "6.8 UH"], ["12MHZ 3258", "8MHZ 3258"], ["1N5 408-6 33M", "1N5824 3S54"], ["BO5053 X3", "LM2596 44"], ["ISO44?", "ISO6721"]]
+            },
+            p2: {
+                colC: [["4R7", "15UH", "106(0805)"], ["100K", "2K2"], ["54R(1206)", "MCP2515"], ["10UF(0805)", "18PF(0805)"], ["ISO 7321", "23C185"], ["MAX232", "NUT RESET X2"]],
+                colB: [["6.8NF(0805)", "4K7(1206)"], ["22PF(0805) 50V", "12.4K(0805)"], ["OR", "1NF(0805)"], ["LED Xanh", "LED Đỏ"], ["WK", "OE", "XE"], ["10K(0805)", "10K(1206)"]],
+                colA: [["4.7UF(0805)", "1UF(3258)35V"], ["1K5(0805)", "2.2UF"], ["1N5428 3S34", "1N4007", "M7"], ["10PF", "ZMM5M5V1", "ZMM6V2"], ["1K8(0805)", "1NF(1206)"], ["C79B", "ISO 1044B"]]
+            },
+            p3: {
+                colC: [["A03400A", "10WR3"], ["10UF(16V)", "10UF(10V)"], ["120R(1206)", "20K(0805)"], ["6K8(0805)", "12K(0805)"], ["10UF(25V)", "27(0805)"], ["1M(0805)", "330(0805)"]],
+                colB: [["680R(0805)", "4K7(0805)"], ["390R(0805)", "240R(0805)"], ["100R(0805)", "22K(0805)"], ["300R(0805)", "510R(0805)"], ["20PF", "200K(0805)"], ["22UF(25V)", "10UF(50V)"]],
+                colA: [["82R(0805)", "10R(0805)"], ["49R9(0805)", "103(0805)10NF"], ["51R(0805)", "22NF(0805)"], ["330R(0805)", "100PF"], ["1K(0805)", "220R(0805)"], ["22PF", "3K3(0805)"]]
+            },
+            p4: {
+                colC: [["Công tắc"], ["DIP200", "Biến trở vuông 3362P 10K"], ["4.7UH", "LED"], ["VISION 800"], ["330UH"], ["JACK Nguồn", "Cuộn cảm 33UH"]],
+                colB: [["LM1048", "10K Chân cắm"], ["MX125", "DB15 Xanh"], ["DOMINO Xanh"], ["DB9 Xanh", "DB9 Đen"], ["Ống lồng"], ["USB Thẳng"]],
+                colA: [["DAUCOS TRON"], ["CAU CHI 185", "TU"], ["14D471K"], ["3MAJ15C", "CH340G"], ["COS 2", "COS 2.5"], ["1000UF", "330UF(35V)"]]
+            },
+            p5: {
+                colC: [["102(1206)", "10UF(35V)"], ["Ốc víc"], ["330UF(50V)", "470UF(35V)"], ["Đầu cắm ?"], ["Relay 24V"], ["Đầu COS nhỏ"]],
+                colB: [["STM32F103"], ["1N4148", "LL4148"], ["USB VUÔNG"], ["Tụ gốm ?"], ["1584", "Công tắc X3"], ["470R Díp", "330 Díp"]],
+                colA: [["Đầu cos kim"], ["Bus 2 thẳng", "Bus Vuông"], ["Bus 6 thẳng", "Bus 6 Vuông"], ["Bus 4 Thẳng", "Bus 4 Vuông"], ["Bus 3 Thẳng", "Bus 3 Vuông"], ["Bus 12"]]
+            }
+        };
 
-        for (let i = 1; i <= 90; i++) {
-            let type = types[Math.floor(Math.random() * types.length)];
-            components.push({
-                id: i,
-                name: `${type}${i}`,
-                function: `Đây là linh kiện ${type} số ${i}, có vai trò quan trọng trong việc điều phối tín hiệu và bảo vệ mạch điện tử.`,
-                panel: Math.ceil(i / 30),
-                pos: `Panel ${Math.ceil(i / 30)} - Hàng ${Math.ceil(((i-1)%30 + 1) / 10)} - Cột ${(i-1) % 10 + 1}`
-            });
+        const components = [];
+        const colLabels = ["A", "B", "C"];
+
+        for (let p = 1; p <= 5; p++) {
+            for (let c = 0; c < 3; c++) {
+                for (let r = 1; r <= 6; r++) {
+                    let pK = `p${p}`, cK = `col${colLabels[c]}`;
+                    let list = (rawData[pK] && rawData[pK][cK]) ? rawData[pK][cK][r-1] : ["-"];
+                    components.push({
+                        id: `${p}-${c}-${r}`,
+                        nameList: list || ["-"],
+                        nameDisplay: (list || ["-"]).join("\n"),
+                        coord: colLabels[c] + r,
+                        panel: p, column: c, row: r
+                    });
+                }
+            }
         }
 
-        // Cấu hình Fuse.js để tìm kiếm không cần chính xác 100%
-        const fuse = new Fuse(components, { keys: ['name'], threshold: 0.4 });
+        const fuse = new Fuse(components, { keys: ['nameList'], threshold: 0.3 });
 
-        // 2. Render Giao diện
         function init() {
             const layout = document.getElementById('mainLayout');
-            for (let p = 1; p <= 3; p++) {
-                const panelDiv = document.createElement('div');
-                panelDiv.className = 'panel';
-                panelDiv.innerHTML = `<h2>PANEL ${p}</h2><div class="grid-container" id="grid-${p}"></div>`;
-                layout.appendChild(panelDiv);
+            for (let p = 5; p >= 1; p--) {
+                const pDiv = document.createElement('div');
+                pDiv.className = 'panel';
+                pDiv.innerHTML = `<h2>BẢNG ${p}</h2><div class="grid-container" id="grid-${p}"></div>`;
+                layout.appendChild(pDiv);
+                const grid = document.getElementById(`grid-${p}`);
+                for (let r = 1; r <= 6; r++) {
+                    for (let c = 0; c < 3; c++) {
+                        const comp = components.find(i => i.panel === p && i.column === c && i.row === r);
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.id = `comp-${comp.id}`;
+                        cell.innerHTML = `<span class="comp-name">${comp.nameDisplay}</span><span class="grid-pos">${comp.coord}</span>`;
+                        cell.onclick = () => highlight(comp);
+                        grid.appendChild(cell);
+                    }
+                }
+            }
+        }
 
-                const grid = panelDiv.querySelector('.grid-container');
-                components.filter(c => c.panel === p).forEach(comp => {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.id = `comp-${comp.id}`;
-                    cell.innerText = comp.name;
-                    cell.onclick = () => {
-                        highlightComponent(comp);
-                        updateInfo(comp, `Đang xem: ${comp.name}`);
-                    };
-                    grid.appendChild(cell);
+        const input = document.getElementById('searchInput');
+        const sList = document.getElementById('suggestionList');
+
+        input.oninput = () => {
+            const res = fuse.search(input.value);
+            sList.innerHTML = "";
+            if (res.length > 0 && input.value !== "") {
+                sList.style.display = "block";
+                res.slice(0, 10).forEach(r => {
+                    r.item.nameList.forEach(n => {
+                        if(n.toLowerCase().includes(input.value.toLowerCase())) {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerText = `${n} (Bảng ${r.item.panel} - ${r.item.coord})`;
+                            div.onclick = () => { input.value = n; sList.style.display = "none"; performSearch(); };
+                            sList.appendChild(div);
+                        }
+                    });
                 });
-            }
-        }
+            } else { sList.style.display = "none"; }
+        };
 
-        // 3. Logic Tìm kiếm & Cập nhật Panel thông tin
         function performSearch() {
-            const query = document.getElementById('searchInput').value;
-            const results = fuse.search(query);
-
-            if (results.length > 0) {
-                const item = results[0].item;
-                highlightComponent(item);
-                updateInfo(item, `Đã tìm thấy linh kiện: ${item.name}`);
-                // Tự động cuộn đến linh kiện nếu nó ở xa
-                document.getElementById(`comp-${item.id}`).scrollIntoView({behavior: 'smooth', block: 'center'});
+            const res = fuse.search(input.value);
+            if (res.length > 0) {
+                const match = res[0].item;
+                highlight(match);
+                document.getElementById(`comp-${match.id}`).scrollIntoView({behavior: 'smooth', block: 'center'});
             } else {
-                resetEffects();
-                updateInfo(null, "Không tìm thấy linh kiện nào khớp!");
+                // HIỆN THÔNG BÁO LỖI NẾU KHÔNG TÌM THẤY
+                document.getElementById('errorModal').style.display = "flex";
             }
         }
 
-        function highlightComponent(comp) {
-            resetEffects();
+        function closeModal() {
+            document.getElementById('errorModal').style.display = "none";
+            input.value = "";
+            resetAll();
+        }
+
+        function highlight(comp) {
             document.body.classList.add('dim-mode');
-            document.getElementById(`comp-${comp.id}`).classList.add('active');
-        }
-
-        function resetEffects() {
-            document.body.classList.remove('dim-mode');
             document.querySelectorAll('.cell').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`comp-${comp.id}`);
+            if(target) target.classList.add('active');
+            document.getElementById('txtPos').innerText = `Bảng ${comp.panel} | Vị trí ${comp.coord}`;
+            document.getElementById('txtFunc').innerText = comp.nameList.join(" | ");
         }
 
-        function updateInfo(comp, statusMsg) {
-            const txtPos = document.getElementById('txtPos');
-            const txtFunc = document.getElementById('txtFunc');
-            const txtStatus = document.getElementById('txtStatus');
-
-            if (comp) {
-                txtPos.innerText = comp.pos;
-                txtFunc.innerText = comp.function;
-                txtStatus.innerHTML = `<span class="found-text">${statusMsg}</span>`;
-                // Thêm hiệu ứng highlight cho các box bên dưới
-                document.querySelectorAll('.info-box').forEach(b => b.classList.add('highlight-box'));
-            } else {
-                txtPos.innerText = "---";
-                txtFunc.innerText = "Vui lòng nhập lại tên linh kiện.";
-                txtStatus.innerText = statusMsg;
-                document.querySelectorAll('.info-box').forEach(b => b.classList.remove('highlight-box'));
-            }
+        function resetAll() {
+            document.body.classList.remove('dim-mode'); 
+            document.querySelectorAll('.cell').forEach(el => el.classList.remove('active'));
+            document.getElementById('txtPos').innerText = "---";
+            document.getElementById('txtFunc').innerText = "Chọn ô hoặc gõ tìm kiếm.";
         }
 
-        // Khởi tạo web
         init();
+        // Nhấn đúp để reset màn hình
+        document.body.ondblclick = resetAll;
     </script>
 </body>
 </html>
